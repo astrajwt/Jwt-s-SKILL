@@ -4,15 +4,15 @@ description: >
   Daily research paper tracker and analyzer for arxiv and HuggingFace. ALWAYS use this skill
   when the user wants to: fetch, summarize, deep-read, or manage research papers; run the daily
   paper pipeline; generate paper reports (daily/weekly/monthly/quarterly); track AI/ML/Systems
-  research trends; maintain a paper knowledge base in Obsidian; backfill historical papers from
+  research trends; maintain a paper knowledge base in Notion; backfill historical papers from
   2023 onward; or ask about "论文日报", "paper daily", "今天有什么新论文", "arxiv", "huggingface papers",
   or anything about research paper tracking. Also trigger when user says "run paper daily",
   "fetch today's papers", "what papers dropped today", or "generate paper report".
 ---
 
-# Paper Daily — 三段式工作流
+# Paper Daily — 自动化三段式工作流
 
-每日论文追踪系统，**三步走**：收集+下载 → 通读评分 → 精读产出。
+每日论文追踪系统，**全自动执行，Claude 负责审阅和质检**。
 
 ---
 
@@ -27,75 +27,53 @@ PaperDaily/
 │   ├── monthly-report-2026-01.md
 │   └── March/
 │       └── 2026-03-03/
-│           ├── daily-report-2026-03-03.md  # 主日报（HF + arXiv 合并）
-│           ├── originals/                   # 原始 PDF（Phase 1）
-│           │   ├── {arxiv_id}.pdf
-│           │   └── {arxiv_id}_meta.json
-│           ├── summaries/                   # 每篇论文摘要笔记（Phase 2）
+│           ├── daily-report-2026-03-03.md   # 主日报（由 generate_digest.py 生成）
+│           ├── scoring.json                  # LLM 评分结果
+│           ├── summaries/                    # 每篇论文摘要笔记（由 score_papers.py 生成）
 │           │   └── {arxiv_id}_{slug}.md
-│           ├── deep-reads/                  # 精读笔记（Phase 3）
-│           │   └── {arxiv_id}_{slug}_deepread.md
-│           └── figures/                     # 从 arxiv HTML 提取的图片
+│           └── deep-reads/                   # 精读笔记（由 deep_read.py 生成）
+│               └── {arxiv_id}_{slug}_deepread.md
 ```
-
-**summary 文件命名**：`{arxiv_id}_{title_slug}.md`（slug = 标题小写下划线，截至 ~60 字符）
 
 ---
 
-## Phase 1 — 收集 & 下载 PDF
+## 一键运行（推荐）
 
-### 1a. 运行主编排脚本
+```bash
+cd ~/Documents/JwtVault/03_paper/paper-daily
+python scripts/main.py --date today --full-auto
+```
+
+`--full-auto` 依次执行：Phase 1 Fetch → Phase 2 Score → Phase 3 Digest + DeepRead → Phase 4 聚合报告（自动判断）→ Phase 5 Notion 同步（自动，需配置 token）
+
+---
+
+## Phase 1 — 收集 & 去重
 
 ```bash
 python scripts/main.py --date DATE
 # DATE = "today" | "yesterday" | "YYYY-MM-DD"
 ```
 
-这会获取 HuggingFace Daily Papers + arxiv，合并评分，输出：
-`/tmp/paper-daily/DATE/prepared.json`
-
-### 1b. 下载 PDF
-
-```bash
-python scripts/download_pdfs.py \
-  --prepared /tmp/paper-daily/DATE/prepared.json \
-  --output /path/to/PaperDaily/YYYY/MonthName/YYYY-MM-DD/originals/
-```
-
-- 每篇论文保存 `{arxiv_id}.pdf` + `{arxiv_id}_meta.json`
-- 失败的记录到 `failed.txt`，不中断流程
-- **网络受限时**（沙箱/代理阻断）：脚本打印 `[SKIP]`，Claude 改用 WebFetch 读 arxiv HTML 版本作为全文
-
-### 1c. 建目录
-
-```bash
-python scripts/file_manager.py --setup --date DATE
-```
+- 抓取 HuggingFace Daily Papers + arxiv（72 小时窗口，避免处理延迟）
+- SQLite 去重，合并评分
+- 输出：`/tmp/paper-daily/DATE/prepared.json`
 
 ---
 
-## Phase 2 — 通读评分（全量，快）
+## Phase 2 — LLM 批量评分
 
-对 `prepared.json` 中**每一篇**论文（不分层级）：
-
-1. 读 abstract（必须）
-2. 尝试读 `https://arxiv.org/html/{arxiv_id}` 摘要段（如可访问）
-3. 给出结构化评分
-
-**输出 `scoring.json`**（严格 JSON 数组，无 markdown 围栏）：
-```json
-[
-  {
-    "id": "arxiv:2503.18773",
-    "title": "BitDecoding: ...",
-    "score": 9,
-    "reason": "HPCA 2026; Tensor Core + INT4 KV; H100 8.9× vs FP16",
-    "summary": "用 Tensor Core 实现低比特 KV Cache attention，H100 上实现 8.9× decode 加速。",
-    "hf_upvotes": 47,
-    "deep_read": true
-  }
-]
+```bash
+python scripts/score_papers.py \
+  --prepared /tmp/paper-daily/DATE/prepared.json \
+  --output /path/to/PaperDaily/YYYY/MonthName/YYYY-MM-DD/scoring.json
 ```
+
+**工作方式**：
+- 读取 `prepared.json` 中的所有论文（title + abstract）
+- 将 `interests.json` 关键词展平后注入评分 prompt
+- 调用 Claude API（`prompts/score_papers.txt`），一次调用评分全部论文
+- 输出 `scoring.json` + `summaries/*.md`
 
 **评分标准（校准！不要虚高）**：
 
@@ -110,50 +88,39 @@ python scripts/file_manager.py --setup --date DATE
 加分：HF trending (+1~2)；顶会接收；代码开源；用户关键词高度匹配
 减分：无消融；cherry-pick 迹象；无代码；baseline 不公平
 
----
-
-## Phase 3 — 精读 + 日报合成
-
-**触发精读**：按评分从高到低取前 10 篇，同分按 HF 热度排序；上限 10 篇/天。重点关注 Agent RL、推理训练、系统性能优化方向。
-
-### 3a. 摘要笔记（每篇均生成，Phase 2 产出）
-
-保存到 `summaries/{arxiv_id}_{slug}.md`，采用 vault 格式：
-
-```markdown
----
-title: "..."
-arxiv_id: "..."
-date: YYYY-MM-DD
-authors: "..."
-source: arxiv   # 或 huggingface
-url: "https://arxiv.org/abs/..."
-pdf: "https://arxiv.org/pdf/..."
-tags: [paper, source/arxiv, topic/...]
-score: N
----
-# {Title}
-
-## 核心贡献 (Key Contributions)
-{2–3 句，具体说新在哪里}
-
-## 方法概述 (Method)
-{3–4 条要点，技术机制}
-
-## 实验结果 (Results)
-{关键数字 + benchmark + 主要消融}
-
-## 为什么值得关注 (Why It Matters)
-{对工程实践的影响}
-
-## 相关论文 (Related Work in Vault)
-- [[MonthName/YYYY-MM-DD/slug|Title]] — 一句话关联说明
+**`scoring.json` 格式**：
+```json
+[
+  {
+    "id": "arxiv:2503.18773",
+    "title": "BitDecoding: ...",
+    "score": 9,
+    "reason": "HPCA 2026; Tensor Core + INT4 KV; H100 8.9× vs FP16",
+    "summary": "用 Tensor Core 实现低比特 KV Cache attention，H100 上实现 8.9× decode 加速。",
+    "hf_upvotes": 47,
+    "deep_read": true
+  }
+]
 ```
 
-### 3b. 精读笔记（top 10 精读，每篇一个 .md 文件）
+---
 
-保存到 `deep-reads/{arxiv_id}_{slug}_deepread.md`：
+## Phase 3a — 精读（Top 20）
 
+```bash
+python scripts/deep_read.py \
+  --scoring /path/to/scoring.json \
+  --output-dir /path/to/deep-reads/ \
+  --top-n 20
+```
+
+**工作方式**：
+- 取 `scoring.json` 前 20 高分论文
+- 为每篇爬取 `https://arxiv.org/html/{arxiv_id}` 全文（抽取正文 + figure captions）
+- 调用 Claude API（`prompts/deep_read.txt`），传入 abstract + HTML 全文
+- 输出 `deep-reads/{arxiv_id}_{slug}_deepread.md`
+
+**精读笔记格式**：
 ```markdown
 ---
 title: "{paper title}"
@@ -175,7 +142,6 @@ tags: [paper/deep-read, topic/X, ...]
 ## 方法
 - **{关键技术决策 1}**: 为什么重要，与 prior work 机制层的区别
 - **{关键技术决策 2}**: ...
-（3–5 条）
 
 ## 实验结果
 - **Benchmarks**: {列举}
@@ -191,97 +157,217 @@ tags: [paper/deep-read, topic/X, ...]
 
 ## 相关工作
 - [[Paper A]] — {为什么相关，一句话}
-- [[Paper B]] — {一句话}
 ```
 
-400–600 词。不要逐字复制摘要。
+---
 
-### 3c. 主日报格式
+## Phase 3b — 日报合成
 
-保存到 `daily-report-YYYY-MM-DD.md`（存于当日目录根路径）。
+```bash
+python scripts/generate_digest.py \
+  --scoring /path/to/scoring.json \
+  --prepared /tmp/paper-daily/DATE/prepared.json \
+  --output /path/to/daily-report-DATE.md
+```
 
-**日报的灵魂**：不是列举论文，而是帮读者建立认知地图——**今天发生了什么，为什么重要，下一步是什么**。写法上，像一个每天跟踪这个领域的资深工程师在向你汇报，有温度、有判断、有态度。
+**工作方式**：
+- 读取 `scoring.json`（评分 + reason + summary）
+- 可选附加：HF trending 信号、arxiv HTML 片段
+- 调用 Claude API（`prompts/daily_digest.txt`）
+- 输出 `daily-report-YYYY-MM-DD.md`
+
+**日报格式**（`prompts/daily_digest.txt` 控制）：
 
 ```markdown
 # 📰 论文日报 — YYYY-MM-DD
 
-> 过去 72 小时 · **N 篇** · 精读 **M 篇** · 覆盖 {主要类别}
-> _PDF 下载脚本：`pdfs/download_manual.sh`（网络限制时手动执行）_
+> 过去 72 小时 · **N 篇** · 精读 **M 篇** · HF 热榜 **K 篇** · 覆盖 {主要类别}
 
 ---
 
 ## 今日叙事 / Today's Story
-
-{3–5 句叙事段落。不是 bullet，是连续的段落。
- 讲清楚：今天这批论文在说什么故事？哪些方向在同时发力？
- 像你在跟一个同行朋友聊："你知道吗，这几天有意思的是……"
- 要体现出领域的脉搏：正在争论什么，正在突破什么，正在走向哪里。}
+{3–5 句叙事段落，讲清楚今天这批论文的故事脉络}
 
 ---
 
 ## 研究温度计 / Field Pulse
 
-| 方向 | 今日篇数 | 温度 | 信号质量 |
-|------|---------|------|---------|
-| 推理训练 / RL-for-Reasoning | N | 🔴 沸腾 | ★★★★ |
-| Agent RL / 工具调用 | N | 🟠 升温 | ★★★☆ |
-| 推理系统 / Inference Opt. | N | 🟡 活跃 | ★★★★ |
-| 分布式训练 / Distributed | N | 🟢 稳健 | ★★★☆ |
-| 其他 | N | ⚪ 杂音 | ★★☆☆ |
+| 方向 | 今日篇数 | 温度 | 信号质量 | HF热度 |
+|------|---------|------|---------|--------|
+| 推理训练 / RL-for-Reasoning | N | 🔴 沸腾 | ★★★★ | 🔥 |
+| 多模态视觉 / Multimodal Vision | N | 🟠 升温 | ★★★☆ | 🔥 |
+| ...
+
+（⚡ 标注新兴方向，连续出现 ≥3 天的非关注领域方向）
 
 ---
 
 ## 精选论文 / Curated Papers
+（评分 ≥ 7 展开，评分 ≤ 5 只写一行）
+
+每篇精选论文格式：
+**[N]. {Title}**
+[arXiv](https://arxiv.org/abs/ID) · [PDF](https://arxiv.org/pdf/ID) · 🤗 [HuggingFace](https://huggingface.co/papers/ID) N赞（如有HF数据）
+[[摘要链接]] · [[📖精读链接]]（如有精读）
+
+{评分、核心创新、工程要点、局限}
+
+**相关工作**
+- [[内部精读链接|Title]] — 一句话说明关联
+- [外部论文Title](https://arxiv.org/abs/ID) — 一句话说明关联
 
 ---
 
-**[N]. {Title}**
-`{arxiv_id}` · {venue} · [[MonthName/YYYY-MM-DD/slug|摘要]] · [[MonthName/YYYY-MM-DD/deep-reads/slug_deepread|📖精读]]
-> 💬 **背景**：{1句话：这篇为什么在这个时间点出现？领域里哪个痛点？}
+## 社区信号 / Community Signal
 
-- ⭐ 价值评级: **N/10** | 🔑 关键数字: {方法名 + 最重要的数字}
-- 核心创新：{具体——不说"提出了一种新方法"}
-- 工程要点：{用 X 实现 Y，可操作}（精读论文专用）
-- 局限：{范围、代码、算力、生产风险}
+{HF trending 论文按 upvotes 排序的表格，标注与用户关注方向的关联度}
 
-（评分 ≤ 5 的论文只写 `⭐ 价值评级` 一行 + 一句背景，无需展开）
+| # | 论文 | HF赞 | 关联度 | 备注 |
+|---|------|------|--------|------|
+| 1 | [Title](arxiv_link) | N赞 | ✅ 核心方向 | 简短评注 |
+| 2 | [Title](arxiv_link) | N赞 | ⚠️ 相关 | |
+| 3 | [Title](arxiv_link) | N赞 | ❌ 不相关 | |
+
+（✅ 核心关注方向 · ⚠️ 边缘相关 · ❌ 超出关注领域）
+
+{2–3 句分析：HF社区热度与AI Infra技术质量的匹配/偏差情况}
+
+---
+
+## 超出关注领域 / Beyond Your Interests
+
+{按方向聚类，每个方向 2–5 篇，只写一行+trend判断}
+
+### {方向名，如 Multimodal Vision} · N篇 · HF N赞
+- [Title](arxiv_link) — 一句话摘要
+- ...
+**趋势判断**：{首次出现/持续升温/可能进入视野 + 是否建议关注}
 
 ---
 
 ## 开放问题 / What's Still Unsettled
-
-{2–3 条。今日论文背后领域仍在争论的核心问题。
- 不是对论文的评价，而是读了这些论文之后你脑子里留下的未解问题。
- 让读者带着问题去读，而不是带着答案离开。}
+{今日论文背后领域仍在争论的核心问题}
 
 ---
 
 ## 今日批次质量 / Batch Quality
+{如果只能读一篇，读哪篇？为什么？}
+```
 
-{3–4 句叙事。今天整体是高信号日还是低信号日？
- 信号最强的是哪个方向？有没有某篇值得深入追踪？
- 如果今天只能读一篇，应该读哪篇，为什么？}
+---
+
+## 完整 main.py 调用链（--full-auto）
+
+```
+Phase 1: main.py fetch        → /tmp/paper-daily/DATE/prepared.json
+Phase 2: score_papers.py      → scoring.json + summaries/*.md
+Phase 3a: deep_read.py        → deep-reads/*_deepread.md (top 20)
+Phase 3b: generate_digest.py  → daily-report-DATE.md
+Phase 4: report_aggregator.py → 聚合报告（自动判断当日是否触发）
+Phase 5: notion_sync.py       → 推送到 Notion（需 NOTION_TOKEN + NOTION_ROOT_PAGE_ID）
+```
+
+---
+
+## 聚合报告（Phase 4）自动触发规则
+
+`--full-auto` 跑完日报后，自动调用 `report_aggregator.py --type auto`，按当日日期判断：
+
+| 报告类型 | 触发条件 | 输出文件 |
+|---------|---------|---------|
+| 周报 | 每周**最后一天**（周日） | `YYYY/MonthName/weekly-report-YYYY-WNN.md` |
+| 月报 | 每月**最后一天** | `YYYY/monthly-report-YYYY-MM.md` |
+| 季报 | 每季度最后一天（3/31、6/30、9/30、12/31） | `YYYY/quarterly-report-YYYY-QN.md` |
+| 年报 | 12 月 31 日 | `YYYY/yearly-report-YYYY.md` |
+
+**数据来源层级**：
+- 周报 ← 当周各日 `daily-report-*.md` 摘要（叙事 + 温度计 + 批次质量）
+- 月报 ← 当月各日日报摘要
+- 季报 ← 当季三个月的 `monthly-report-*.md`（缺失则 fallback 到日报）
+- 年报 ← 四个季度的 `quarterly-report-*.md`（缺失则 fallback 到月报）
+
+**手动触发**：
+```bash
+# 自动检测（推荐）
+python scripts/report_aggregator.py --type auto --date 2026-03-30
+
+# 指定类型
+python scripts/report_aggregator.py --type weekly  --date 2026-03-09
+python scripts/report_aggregator.py --type monthly --date 2026-03-31
+python scripts/report_aggregator.py --type quarterly --date 2026-03-31
+python scripts/report_aggregator.py --type yearly  --date 2026-12-31
+
+# 强制覆盖已有报告
+python scripts/report_aggregator.py --type monthly --date 2026-03-31 --force
 ```
 
 ---
 
 ## 核心原则
 
-1. **直接，有观点**：说出判断，不要两边都说"这很有意思"
-2. **校准评分**：5 分是中位，不是差评。每天不会全是 9-10
-3. **明确指出**：benchmark 过拟合、p-hacking、baseline 不公平、模糊声明
-4. **工程视角优先**：工程启示必须可操作
-5. **HF 热度 ≠ 质量**：HF trending 但关键词不相关的，明确标注
-6. **精读优先级**：Agent RL 类 > kernel/system 类 > distributed training 类 > RLHF 类 > 其他
+1. **脚本全自动**：评分、精读、日报全部由 Claude API 调用完成，无需 Claude Code 手动生成
+2. **Claude 负责审阅**：运行完成后，Claude Code 可对输出进行质检和小修
+3. **校准评分**：5 分是中位，不是差评。每天不会全是 9-10
+4. **明确指出**：benchmark 过拟合、p-hacking、baseline 不公平、模糊声明
+5. **工程视角优先**：工程启示必须可操作
+6. **HF 热度 ≠ 质量**：HF 社区信号与技术质量评估必须分开呈现，trending 但与关键词不相关的明确标注
 7. **72 小时窗口**：每日覆盖过去三天提交的论文，SQLite 去重，trending >3 次跳过
-8. **有温度**：日报叙事段要有人味，帮读者建立认知地图，不只是列表
-9. **路径格式**：vault 目录用 `YYYY/MonthName/YYYY-MM-DD/`（如 `2026/March/2026-03-03/`），由 `file_manager.py` 自动处理
+8. **HTML 优先**：deep_read.py 优先使用 arxiv HTML 全文，fallback 到 abstract only
+9. **路径格式**：vault 目录用 `YYYY/MonthName/YYYY-MM-DD/`，由 `file_manager.py` 自动处理
+10. **始终附链接**：每篇精选论文必须附 arXiv + PDF 链接；HF trending 论文附 HuggingFace 链接 + 赞数；精读论文附相关工作的内外链
+11. **非关注领域聚类**：非关注方向的论文按方向聚类后在「超出关注领域」section 汇总，不混入主列表
+12. **领域趋势检测**：若某个非关注方向连续 **3 天**出现 **≥5 篇**论文，在日报中标注 ⚡ 并在当日报末附建议：`⚡ 建议将 [{方向名}] 加入 interests.json`
 
-## Obsidian 内链格式
+---
 
-vault 内链使用：`[[MonthName/YYYY-MM-DD/slug|Title]]`（相对于 PaperDaily/ 根目录）
+## Notion 同步（Phase 5）
 
-例：`[[March/2026-03-03/2503.18773_bitdecoding_accelerating_large-batch_llm_decoding|BitDecoding]]`
+pipeline 每天跑完后自动触发，将以下内容推送到 Notion：
+
+| 内容 | Notion 位置 |
+|------|------------|
+| 日报 `daily-report-DATE.md` | `PaperDaily / YYYY / MM_Month / 日报 DATE` |
+| 精读 `deep-reads/*.md` | `PaperDaily / YYYY / MM_Month / 日报 DATE / 精读笔记 / <论文标题>` |
+| 周报 | `PaperDaily / YYYY / 周报 / weekly-report-YYYY-WNN` |
+| 月报 | `PaperDaily / YYYY / 月报 / monthly-report-YYYY-MM` |
+| 季报 | `PaperDaily / YYYY / 季报 / quarterly-report-YYYY-QN` |
+| 年报 | `PaperDaily / YYYY / yearly-report-YYYY` |
+
+**配置（`.env` 文件）**：
+```bash
+NOTION_TOKEN=ntn_...                    # Notion integration token
+NOTION_ROOT_PAGE_ID=xxxxxxxxxxxxxxxx    # PaperDaily 根页面 ID
+```
+
+**创建 Notion integration**：
+1. 访问 https://www.notion.so/my-integrations → New integration
+2. 复制 token 填入 `.env`
+3. 在 Notion 里创建 "PaperDaily" 页面，点右上角 `...` → Connections → 添加你的 integration
+4. 复制页面 URL 中的 UUID 作为 `NOTION_ROOT_PAGE_ID`
+
+**手动同步**：
+```bash
+# 同步某天
+python scripts/notion_sync.py --date 2026-03-07
+
+# 历史回填
+python scripts/notion_sync.py --date-range 2023-01-01 2026-03-07
+
+# 强制覆盖已有页面
+python scripts/notion_sync.py --date 2026-03-07 --force
+```
+
+---
+
+## Notion 页面链接格式
+
+deep_read.txt 和 daily_digest.txt 中的相关工作链接统一使用 markdown 外链格式：
+
+```
+[BitDecoding](https://arxiv.org/abs/2503.18773)
+```
+
+Notion sync 脚本会在推送时自动建立页面间的层级关系，不需要手动维护内链。
 
 ---
 
@@ -289,14 +375,44 @@ vault 内链使用：`[[MonthName/YYYY-MM-DD/slug|Title]]`（相对于 PaperDail
 
 | 脚本 | 作用 |
 |------|------|
-| `main.py` | 主编排，fetch + dedup，输出 prepared.json |
-| `download_pdfs.py` | 批量下载 arxiv PDF |
-| `file_manager.py` | 目录结构管理 |
-| `fetch_arxiv.py` | arxiv API 抓取 |
+| `main.py` | 主编排，fetch + dedup，输出 prepared.json；`--full-auto` 调用全流程 |
+| `score_papers.py` | **Phase 2**：LLM 批量评分，输出 scoring.json + summaries/ |
+| `deep_read.py` | **Phase 3a**：爬取 arxiv HTML + LLM 精读，输出 deep-reads/ |
+| `generate_digest.py` | **Phase 3b**：LLM 日报合成，输出 daily-report-DATE.md |
+| `api_client.py` | Claude API wrapper（需要 `PAPER_DAILY_API_KEY` 或 `ANTHROPIC_API_KEY`，不能用 `ANTHROPIC_AUTH_TOKEN`）|
+| `fetch_arxiv.py` | arxiv API 抓取（72 小时窗口） |
 | `fetch_hf.py` | HuggingFace Daily Papers |
 | `dedup.py` | SQLite 去重数据库 |
+| `file_manager.py` | 目录结构管理 |
+| `download_pdfs.py` | 批量下载 arxiv PDF（可选） |
 | `figure_extractor.py` | 从 arxiv HTML 提取图片 |
-| `obsidian_linker.py` | 搜索 vault 关联笔记 |
-| `keyword_tracker.py` | 关键词进化追踪 |
-| `report_aggregator.py` | 周报/月报/季报 |
+| `report_aggregator.py` | **Phase 4**：聚合报告（周/月/季/年），`--full-auto` 结束后自动调用 |
+| `notion_sync.py` | **Phase 5**：推送日报、精读、聚合报告到 Notion（需 `NOTION_TOKEN` + `NOTION_ROOT_PAGE_ID`）|
 | `setup_schedule.py` | macOS launchd 定时 9:00 AM |
+
+---
+
+## 环境变量
+
+```bash
+# ⚠️ 重要：ANTHROPIC_AUTH_TOKEN 是 Claude Code 的内部会话 token，不能用于脚本调用
+# 需要单独申请 API key：https://console.anthropic.com/
+
+# 设置用于 paper-daily 脚本的 API key（选一个）
+export PAPER_DAILY_API_KEY="sk-ant-..."        # 推荐，专用于这个工作流
+export ANTHROPIC_API_KEY="sk-ant-..."          # 备用（注意不要与 Claude Code session 冲突）
+
+# 可选：自定义 API endpoint（默认 api.anthropic.com）
+export PAPER_DAILY_BASE_URL="https://..."
+
+# 可选：指定模型（默认 claude-sonnet-4-5）
+export PAPER_DAILY_MODEL="claude-sonnet-4-5"
+```
+
+## Prompt 模板
+
+| 文件 | 作用 |
+|------|------|
+| `prompts/score_papers.txt` | 批量评分 prompt，`{{interest_keywords}}` + `{{papers_json}}` |
+| `prompts/daily_digest.txt` | 日报合成 prompt，多个 `{{...}}` 占位符 |
+| `prompts/deep_read.txt` | 单篇精读 prompt，`{{title}}` + `{{fulltext}}` + ... |
