@@ -25,7 +25,7 @@ Check the GitHub repositories **shader-slang/slang** and **vllm-project/vllm** f
      `gh issue list --repo vllm-project/vllm --state open --label "bug" --json number,title,url,labels,assignees,body --limit 10`
    - Filter for unassigned issues (where assignees list is empty) as these are available for contribution.
 
-4. Generate a Markdown summary file at `/sessions/sleepy-zen-feynman/mnt/outputs/github-updates-YYYY-MM-DD-HH.md` (using the current date and hour). The file should contain:
+4. Generate a Markdown summary file at `~/outputs/github-updates-YYYY-MM-DD-HH.md` (using the current date and hour). The file should contain:
    - A header with the check timestamp
    - **Recent Activity** section for each repo with sub-sections for PRs and Issues updated in the last hour
    - Each item should show: number, title, state, author, labels, and a clickable URL
