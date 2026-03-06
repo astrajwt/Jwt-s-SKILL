@@ -42,6 +42,32 @@ GitHub Issue 全量阅读、归纳分析与中文技术文档写作。
 
 ---
 
+### [`feishu-hook-notify`](./feishu-hook-notify/SKILL.md)
+
+Claude Code 任务完成后自动推送飞书卡片通知，基于飞书开放平台应用型机器人。
+
+- 任务完成时发绿色卡片：电脑名、工作目录、耗时、工具调用统计、操作文件、Claude 最后回复
+- 任务运行超 1 小时每小时发橙色心跳卡片
+- 通过手机号自动查询 open_id，首次运行后缓存，无需手动配置
+- 纯标准库实现，无第三方依赖，macOS SSL 自动兼容
+
+触发词：`飞书通知`、`配置飞书`、`任务完成提醒`、`飞书 hook`、`feishu notify`、`feishu hook`
+
+---
+
+### [`skill-recorder`](./skill-recorder/SKILL.md)
+
+Skill 创建与同步工具，帮助将新 skill 录入本地并备份到 Jwt-s-SKILL 仓库。
+
+- 引导填写 name、description、触发词和工作流
+- 自动写入 `~/.claude/skills/{name}/SKILL.md`
+- 自动同步副本到 `Jwt-s-SKILL/{name}/SKILL.md`
+- 自动更新本 README
+
+触发词：`记录skill`、`创建skill`、`新建skill`、`同步skill`、`record skill`、`create skill`
+
+---
+
 ## 使用方法
 
 将任意 skill 目录放到 `.claude/skills/` 下即可被 Claude Code 自动加载，或在对话中直接描述触发词。
