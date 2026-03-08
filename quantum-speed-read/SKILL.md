@@ -1,13 +1,13 @@
 ---
-name: book-reader
+name: quantum-speed-read
 description: >
-  深度阅读技术书籍 PDF，生成工程师视角的高质量读书笔记。当用户要求阅读书籍、读 PDF、生成读书笔记、书籍总结、技术书分析时触发。
+  量子速读：深度阅读技术书籍 PDF，生成工程师视角的高质量读书笔记。当用户要求阅读书籍、读 PDF、生成读书笔记、书籍总结、技术书分析时触发。
   重点关注系统性能、AI Infra、GPU、LLM、分布式系统等工程场景。
-  触发词：读书、读 PDF、书籍笔记、book notes、read book、read pdf、读这本书、帮我读、技术书总结、生成读书笔记、book reader、深度阅读。
+  触发词：量子速读、读书、读 PDF、书籍笔记、book notes、read book、read pdf、读这本书、帮我读、技术书总结、生成读书笔记、深度阅读。
   ALWAYS use this skill when the user provides a PDF and asks for notes, summary, or analysis.
 ---
 
-# Book Reader — 技术书籍深度阅读与工程笔记生成
+# 量子速读 — 技术书籍深度阅读与工程笔记生成
 
 以系统性能专家 + AI Infrastructure 工程师的双重视角，深度阅读技术书籍，生成结构清晰、工程导向的读书笔记。
 
