@@ -43,9 +43,18 @@ description: >
 
 ### Phase 3 — 生成读书笔记
 
-按以下结构输出，根据书籍内容灵活调整：
+笔记必须包含 Obsidian frontmatter，按以下完整格式输出：
 
 ```markdown
+---
+title: 《书名》
+author: 作者名
+date: YYYY-MM-DD
+tags: [book-notes, 技术方向tag, 性能/AI-infra/分布式系统 等]
+source: /path/to/book.pdf
+rating: ⭐⭐⭐⭐⭐
+---
+
 # 《书名》工程读书笔记
 
 > 一句话定位：这本书在解决什么问题，适合什么工程师读
@@ -108,13 +117,26 @@ description: >
 [推荐搭配阅读的相关资料]
 ```
 
-### Phase 4 — 输出规范
+### Phase 4 — 保存到 Obsidian
 
-- 用 Markdown 输出，适合保存为 `.md` 文件
+笔记生成完毕后，**自动写入 Obsidian vault**：
+
+- Vault 路径：`~/Documents/JwtVault/09_books/`
+- 文件名规则：`《书名》- 作者.md`（例：`《性能之巅》- Brendan Gregg.md`）
+- 使用 Write 工具将完整笔记写入对应路径
+
+操作步骤：
+1. 确认目录存在，不存在则用 Bash 创建：`mkdir -p ~/Documents/JwtVault/09_books/`
+2. 用 Write 工具写入文件：`~/Documents/JwtVault/09_books/《书名》- 作者.md`
+3. 写入成功后告知用户完整保存路径
+
+### Phase 5 — 输出规范
+
 - 代码示例用 fenced code block，标注语言
 - 架构图使用 Mermaid（```mermaid）
 - 避免大段照抄原文，优先用工程师自己的语言重新表述
 - 如果书中某个章节与 AI Infra 高度相关，单独展开一节深度分析
+- tags 根据书籍内容自动选取，常用：`性能优化`、`AI-infra`、`GPU`、`分布式系统`、`Linux内核`、`存储`、`网络`
 
 ---
 
