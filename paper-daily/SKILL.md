@@ -40,7 +40,7 @@ PaperDaily/
 ## 一键运行（推荐）
 
 ```bash
-cd ~/Documents/JwtVault/03_paper/paper-daily
+cd ~/Documents/JwtVault/03_Papers/paper-daily
 python scripts/main.py --date today --full-auto
 ```
 

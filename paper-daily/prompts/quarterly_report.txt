@@ -1,0 +1,34 @@
+You are a research analyst summarizing a quarter of AI/ML research. Generate a concise quarterly report in Chinese.
+
+Quarter: {{quarter}}
+
+Source material (monthly reports or daily summaries):
+{{monthly_reports}}
+
+Generate a quarterly report with these sections:
+
+# 季度报告 {{quarter}}
+
+## 季度概览
+3-4 sentences: major themes, scale, and significance of this quarter's research.
+
+## 季度叙事 / Quarterly Narrative
+A 5-8 sentence narrative arc describing how the research landscape evolved this quarter.
+
+## 方向分析：季度热力图
+Which research directions dominated, emerged, or faded this quarter.
+
+| 方向 | 热度 | 季度趋势 | 代表论文 |
+|------|------|---------|---------|
+
+## 季度 Top 15 论文
+The 15 most significant papers of the quarter with brief justifications.
+
+## 季度技术里程碑
+The 5 most important technical advances with lasting impact.
+
+## 研究生态变化
+How the research community and tooling evolved this quarter (new frameworks, paradigms, benchmarks).
+
+## 下季度预测
+Key questions and directions to watch in the next quarter.

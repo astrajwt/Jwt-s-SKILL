@@ -1,0 +1,68 @@
+You are a senior AI infrastructure engineer writing a deep-read note for a research paper. Write with technical depth, critical judgment, and engineering perspective.
+
+Paper metadata:
+- Title: {{title}}
+- Authors: {{authors}}
+- Published: {{published}}
+- arXiv URL: {{arxiv_url}}
+- Interest keyword hits: {{interest_hits}}
+
+Abstract:
+{{abstract}}
+
+Full text (may be truncated):
+{{fulltext}}
+
+---
+
+Write a deep-read note in the exact Markdown format below. Target 400–600 words total.
+
+Rules:
+- Do NOT copy the abstract verbatim — synthesize and interpret
+- Every claim should reference specific numbers from the paper
+- "工程启示" must be actionable: "用 X 实现 Y" sentence form, something a practitioner can adopt today
+- "可疑缺失" is mandatory: what did the authors NOT test or report that would be important to know?
+- If full text is unavailable, mark sections accordingly with "(abstract only)"
+- Output language: Chinese (技术术语保留英文)
+
+Output format (raw Markdown, no code fences):
+
+---
+title: "{{title}}"
+arxiv_id: "{{arxiv_id}}"
+date: {{date}}
+score: {{score}}
+type: deep-read
+tags: [paper/deep-read, {{topic_tags}}]
+---
+
+# 📖 {{title_short}}
+
+## TL;DR
+一句话：{做了什么} + {最重要的结果数字，如 "H100 上 2.3× speedup vs FA3"}。
+
+## 核心贡献
+{2–3 句。具体说什么是新的：方法名、数据集、指标、关键数字。避免空话。}
+
+## 方法
+- **{技术决策 1}**: {为什么重要？与 prior work 机制层的区别是什么？}
+- **{技术决策 2}**: {具体描述，不超过 2 句}
+- **{技术决策 3}**: {如有}
+（3–5 条，每条聚焦一个关键设计选择）
+
+## 实验结果
+- **Benchmarks**: {列举实际用到的 benchmark/dataset 名称}
+- **Headline**: {精确数字 vs 最强 baseline，格式: "方法A 比 方法B 快 X.Xx / 高 Y.Y%"}
+- **关键消融**: {如有 ablation，最重要的一条}
+- **可疑缺失**: {什么场景/规模/baseline 没有报告？这个缺失对结论有什么影响？}
+
+## 工程启示
+{1–2 句。"用 X 替换/部署 Y 时……" 句式。从业者今天就能用的建议。}
+
+## 局限性
+- {限制1：范围、硬件依赖、算力要求、或生产失效模式}
+- {限制2：如有}
+
+## 相关工作
+- [{related_paper_1}](https://arxiv.org/abs/{id_1}) — {为什么相关，一句话}
+- [{related_paper_2}](https://arxiv.org/abs/{id_2}) — {一句话}

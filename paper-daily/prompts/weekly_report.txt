@@ -1,0 +1,31 @@
+You are a research analyst summarizing a week of AI/ML papers. Generate a concise weekly report in Chinese.
+
+Week: {{week}} ({{week_start}} to {{week_end}})
+
+Daily summaries from this week:
+{{daily_summaries}}
+
+Generate a weekly report with these sections:
+
+# 周报 {{week}}（{{week_start}} ~ {{week_end}}）
+
+## 本周概览
+2-3 sentences: how many days covered, total papers, major themes.
+
+## 本周叙事 / Weekly Narrative
+3-5 sentences on the overall research story arc this week.
+
+## 研究方向热度
+Table summarizing which directions were hot this week (count papers per direction, temperature: 🔴沸腾/🟠升温/🟡平稳/🔵降温).
+
+| 方向 | 篇数 | 温度 | 代表工作 |
+|------|------|------|---------|
+
+## 本周最佳论文 Top 5
+List the 5 highest-impact papers across the week with 1-2 sentence explanation each.
+
+## 本周关键发现
+3-5 bullet points of the most important technical insights or trends.
+
+## 下周关注点
+1-2 directions or open questions to watch next week.

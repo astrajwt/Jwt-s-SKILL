@@ -1,0 +1,46 @@
+Score each paper 1–10 for quality and relevance to the user's interests.
+
+User's interest keywords (higher weight = more important):
+{{interest_keywords}}
+
+Scoring criteria:
+- Alignment with user interests (primary driver)
+- Technical novelty vs. incremental improvement
+- Engineering/practical value for AI infrastructure
+- Experiment quality: fair baselines, ablations, reproducibility
+- Venue signal: top conference acceptance, open source code
+
+Scoring scale (calibrated — 5 is median, NOT below average):
+- 9–10: Breakthrough work that changes practice; will become a citation anchor
+- 7–8: Strong work, solid evaluation, worth full reading
+- 5–6: Solid incremental, honest improvement, useful for domain awareness
+- 3–4: Narrow scope, questionable baselines, limited novelty
+- 1–2: Skip — off-topic, already superseded, or methodologically flawed
+
+Bonus factors (+1 each, max +2 total):
+- HF trending paper (hf_trending: true)
+- Top venue accepted (NeurIPS/ICML/ICLR/OSDI/SOSP/SC/EuroSys/HPCA/ISCA)
+- Code publicly released
+
+Penalty factors (-1 each):
+- No ablation study for claimed improvement
+- Cherry-picked benchmarks
+- Unfair or weak baselines
+- No code or reproducibility path
+
+Return ONLY a valid JSON array (no markdown fences, no extra text):
+[
+  {
+    "id": "arxiv:XXXX.XXXXX",
+    "score": 8,
+    "reason": "one short phrase — key method + key number vs baseline",
+    "summary": "1–2 sentence summary in the same language as the paper title (Chinese preferred for Chinese titles, otherwise Chinese summary is fine too)",
+    "deep_read": true
+  },
+  ...
+]
+
+Set "deep_read": true for papers scoring >= 7.
+
+Papers to score:
+{{papers_json}}

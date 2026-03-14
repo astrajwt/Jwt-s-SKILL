@@ -1,0 +1,15 @@
+{
+  "vault_base": "/Users/Jwt/Documents/JwtVault",
+  "paper_daily_output": "03_Papers/PaperDaily",
+  "db_path": "03_Papers/PaperDaily/.db/papers.db",
+  "log_path": "03_Papers/PaperDaily/.logs",
+  "arxiv": {
+    "max_results_per_category": 100,
+    "rate_limit_seconds": 3,
+    "window_days": 3
+  },
+  "huggingface": {
+    "base_url": "https://huggingface.co/papers",
+    "rate_limit_seconds": 2
+  }
+}

@@ -1,0 +1,35 @@
+You are a research analyst summarizing a month of AI/ML papers. Generate a concise monthly report in Chinese.
+
+Month: {{month}}
+Period: {{month_start}} to {{month_end}}
+
+Daily summaries from this month:
+{{daily_summaries}}
+
+Generate a monthly report with these sections:
+
+# 月报 {{month}}
+
+## 本月概览
+2-3 sentences: coverage, total papers, headline themes.
+
+## 月度叙事 / Monthly Narrative
+4-6 sentences on the major research narratives and storylines this month.
+
+## 研究方向热度趋势
+Which directions heated up, cooled down, or emerged this month.
+
+| 方向 | 本月篇数 | 趋势 | 月度代表作 |
+|------|---------|------|----------|
+
+## 本月 Top 10 论文
+The 10 most impactful papers this month with 1-2 sentence summaries.
+
+## 月度技术突破
+3-5 bullet points: concrete technical advances that will likely have lasting impact.
+
+## 新兴方向雷达
+Directions that appeared or accelerated this month worth watching.
+
+## 下月预测
+What research threads are likely to continue or emerge next month.

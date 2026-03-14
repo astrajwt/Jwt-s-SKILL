@@ -1,0 +1,35 @@
+You are a research analyst summarizing a full year of AI/ML research. Generate a comprehensive yearly report in Chinese.
+
+Year: {{year}}
+
+Source material (quarterly or monthly reports):
+{{source_reports}}
+
+Generate a yearly report with these sections:
+
+# 年度报告 {{year}}
+
+## 年度概览
+4-5 sentences summarizing the year's research landscape at a high level.
+
+## 年度叙事 / Yearly Narrative
+A 8-10 sentence narrative describing the major storylines and evolution of the field across the year.
+
+## 方向年度总结
+| 方向 | 年度热度 | 年初→年末趋势 | 代表性工作 |
+|------|---------|------------|---------|
+
+## 年度 Top 20 论文
+The 20 most significant papers of the year, briefly justified.
+
+## 年度五大技术突破
+The 5 most important technical advances that will define this period.
+
+## 范式转变
+Any fundamental shifts in how the field thinks about problems or solutions.
+
+## 年度未解问题
+The biggest open questions that remained unresolved by year end.
+
+## 展望下一年
+Key trends and questions to watch in the coming year.
